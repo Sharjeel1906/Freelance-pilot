@@ -1,12 +1,19 @@
 import imaplib
 import os
 import email
+from datetime import datetime, timedelta
 from email.header import decode_header
-from .models import GmailEmail
-from dotenv import load_dotenv
-import re
+from pathlib import Path
 
-load_dotenv()
+import re
+from dotenv import load_dotenv
+
+from .models import GmailEmail
+
+# Load .env from project root so credentials are always found
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_PROJECT_ROOT / ".env")
+
 EMAIL = os.getenv("EMAIL")
 APP_PASSWORD = os.getenv("EMAIL_APP_PASS")
 
@@ -18,16 +25,38 @@ def connect_mail():
     return mail
 
 
-def fetch_email_ids(mail):
+def get_last_sync_date():
+    """
+    Return the date of the most recently saved email.
+    Used to fetch only NEW emails since the last batch run.
+    """
+    latest = GmailEmail.objects.order_by("-created_at").values_list("created_at", flat=True).first()
+    return latest
+
+
+# Only fetch job-alert emails from these senders (IMAP FROM matches substrings in the From header)
+JOB_ALERT_SENDERS = [
+    "Minhaj ali khan",
+    "upwork",
+    "fiverr",
+]
+
+
+def fetch_email_ids(mail, since_date=None):
+    """
+    Fetch inbox email IDs since since_date, filtered to job-alert senders only.
+    Combines FROM + SINCE so each daily batch only pulls new mail from these sources.
+    """
+    if since_date:
+        # IMAP SINCE uses date only (ignores time) — subtract 1 day to avoid missing same-day emails
+        imap_date = (since_date - timedelta(days=1)).strftime("%d-%b-%Y")
+    else:
+        # First run: pull last 30 days instead of entire inbox history
+        imap_date = (datetime.now() - timedelta(days=30)).strftime("%d-%b-%Y")
+
     all_ids = set()
-
-    searches = [
-        #'FROM "linkedin"',
-        'FROM "upwork"',
-        'FROM "fiverr"',
-    ]
-
-    for query in searches:
+    for sender in JOB_ALERT_SENDERS:
+        query = f'(FROM "{sender}" SINCE "{imap_date}")'
         status, messages = mail.search(None, query)
         if status == "OK" and messages[0]:
             for eid in messages[0].split():
@@ -67,6 +96,8 @@ def read_email(mail, email_id):
         "subject": subject,
         "body": body
     }
+
+
 def save_email(data):
     if not data.get("gmail_id"):
         return False
