@@ -8,8 +8,6 @@ from .match_saver import MatchResultSaver
 from .gemini_throttle import wait_for_slot
 
 logger = logging.getLogger(__name__)
-
-
 DEFAULT_PROFILE = {
     "identity": {
         "name": "Sharjeel Ahmed",
@@ -275,7 +273,6 @@ Company            : {job.get('company_name') or 'Not specified'}
         return f"{PROFILE_MATCHING_PROMPT}\n\n{profile_text}\n\n{job_text}"
 
     def _extract_retry_delay(self, error_str: str) -> float | None:
-        """Pull a suggested retry delay (seconds) out of an error message, if present."""
         m = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", error_str)
         if m:
             return float(m.group(1)) + 1  # small buffer
@@ -285,15 +282,8 @@ Company            : {job.get('company_name') or 'Not specified'}
         return None
 
     def match(self, job: dict, max_retries: int = 2) -> dict:
-        """
-        Throttled to stay under MAX_REQUESTS_PER_MINUTE (see gemini_throttle.py).
-        On a daily-quota error we fail fast — no retry will help until that
-        resets, so we don't waste time waiting on it. Transient errors
-        (429/500/503 that aren't a daily-quota wall) get one short retry.
-        """
         final_input = self.build_input(job)
         last_error = None
-
         for attempt in range(max_retries):
             try:
                 wait_for_slot()

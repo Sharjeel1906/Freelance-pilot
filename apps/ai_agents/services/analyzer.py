@@ -1,7 +1,6 @@
 import json
 import re
 import google.generativeai as genai
-
 from .prompts import SYSTEM_EMAIL_ANALYZER_PROMPT
 
 

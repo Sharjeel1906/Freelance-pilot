@@ -2,7 +2,6 @@ import logging
 import os
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
-
 import requests
 from dotenv import load_dotenv
 from pathlib import Path
