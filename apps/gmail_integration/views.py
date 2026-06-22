@@ -21,6 +21,7 @@ from apps.ai_agents.models import Job, JobMatchResult
 from apps.ai_agents.services.analyzer import EmailAnalyzer
 from apps.ai_agents.services.job_saver import JobSaver
 from apps.ai_agents.services.gemini_throttle import wait_for_slot
+from apps.ai_agents.services import clarification_service
 from apps.ai_agents.services.voice_agent import (
     dispatch_job_calls,
     schedule_job_calls,
@@ -133,6 +134,11 @@ def _match_new_jobs():
     agent = ProfileMatchingAgent(api_key=GEMINI_API_KEY)
     results = agent.match_batch(jobs)
     logger.info("Matched %d new jobs", len(results))
+
+    queued = clarification_service.queue_low_completeness_jobs(results)
+    if queued:
+        logger.info("Queued %d job(s) for Telegram clarification", queued)
+
     return results
 
 

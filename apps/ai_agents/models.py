@@ -60,3 +60,38 @@ class JobMatchResult(models.Model):
 
     def __str__(self):
         return f"{self.job.job_title} - {self.match_score}"
+
+
+class PendingClarification(models.Model):
+    STATUS_WAITING = "waiting"     # queued, not yet asked about
+    STATUS_SENT = "sent"           # message sent to Telegram, awaiting the full description
+    STATUS_DESCRIBED = "described"  # description received, awaiting an explicit proposal request
+    STATUS_RESOLVED = "resolved"   # proposal generated & sent
+
+    STATUS_CHOICES = [
+        (STATUS_WAITING, "Waiting to be sent"),
+        (STATUS_SENT, "Sent — awaiting description"),
+        (STATUS_DESCRIBED, "Described — awaiting proposal request"),
+        (STATUS_RESOLVED, "Resolved"),
+    ]
+
+    job = models.OneToOneField(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="pending_clarification",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_WAITING,
+    )
+    telegram_chat_id = models.CharField(max_length=64, blank=True, null=True)
+    full_description = models.TextField(blank=True, null=True)
+    proposal_text = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+    resolved_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Clarification for {self.job.job_title} ({self.status})"

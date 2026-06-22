@@ -55,7 +55,6 @@ def _call_window_bounds(now: datetime) -> tuple[datetime, datetime]:
 
 
 def call_user(job: dict, user_phone: str) -> dict:
-    """Place an immediate outbound Vapi call."""
     config = _vapi_config()
     missing = [k for k, v in config.items() if not v]
     if missing:
@@ -72,12 +71,18 @@ def call_user(job: dict, user_phone: str) -> dict:
         "assistantId": config["assistant_id"],
         "phoneNumberId": config["phone_number_id"],
         "customer": {"number": user_phone},
-        "metadata": {
+        "assistantOverrides": {
+            "variableValues": {
+                "job_title": job.get("job_title"),
+                "summary": job.get("summary"),
+                "project_description": job.get("project_description"),
+                "budget": job.get("budget"),
+                "skills": ", ".join(job.get("skills") or []) if isinstance(job.get("skills"), list) else job.get(
+                    "skills", ""),
+            }
+        },
+        "metadata": {  # keep this only for your own webhook/logging use
             "job_title": job.get("job_title"),
-            "summary": job.get("summary"),
-            "project_description": job.get("project_description"),
-            "budget": job.get("budget"),
-            "skills": job.get("skills"),
         },
     }
 
